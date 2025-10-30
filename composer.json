@@ -1,0 +1,30 @@
+{
+  "name": "eudo1111/kimai-user-activity-report",
+  "description": "User activity report for Kimai",
+  "homepage": "https://dolux.ch/",
+  "type": "kimai-plugin",
+  "version": "0.0.1",
+  "keywords": [
+      "kimai",
+      "kimai-plugin"
+  ],
+  "require": {},
+  "license": "MIT",
+  "authors": [
+      {
+          "name": "E. Dorn",
+          "homepage": "https://dolux.ch"
+      }
+  ],
+  "extra": {
+      "kimai": {
+          "require": 21700,
+          "name": "User Activity Reports"
+      }
+  },
+  "autoload": {
+      "psr-4": {
+          "KimaiPlugin\\UserActivityReportBundle\\": ""
+      }
+  }
+}
