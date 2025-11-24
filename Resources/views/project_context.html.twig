@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block report %}
-    {% embed '@theme/embeds/card.html.twig' with {box_id: 'user-activity-sum-by-month', hasData: hasData, fullsize: hasData, users: users, activities: activities, activityTotals: activityTotals, sumType: sumType, decimal: decimal} only %}
+    {% embed '@theme/embeds/card.html.twig' with {box_id: 'project-context-sum-by-month', hasData: hasData, fullsize: hasData, users: users, activities: activities, activityTotals: activityTotals, sumType: sumType, decimal: decimal} only %}
         {% block box_body_class %}table-responsive m-0{% endblock %}
         {% block box_body %}
             {% import "macros/widgets.html.twig" as widgets %}

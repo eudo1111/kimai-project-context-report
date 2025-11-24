@@ -1,12 +1,12 @@
 <?php
 
-namespace KimaiPlugin\UserActivityReportBundle;
+namespace KimaiPlugin\ProjectContextReportBundle;
 
 use App\Plugin\PluginInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
-class UserActivityReportBundle extends Bundle implements PluginInterface
+class ProjectContextReportBundle extends Bundle implements PluginInterface
 {
     public function build(ContainerBuilder $container)
     {

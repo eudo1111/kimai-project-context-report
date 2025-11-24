@@ -1,5 +1,5 @@
 {
-  "name": "eudo1111/kimai-user-activity-report",
+  "name": "eudo1111/kimai-project-context-report",
   "description": "User activity report for Kimai",
   "homepage": "https://dolux.ch/",
   "type": "kimai-plugin",
@@ -24,7 +24,7 @@
   },
   "autoload": {
       "psr-4": {
-          "KimaiPlugin\\UserActivityReportBundle\\": ""
+          "KimaiPlugin\\ProjectContextReportBundle\\": ""
       }
   }
 }

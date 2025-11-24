@@ -4,11 +4,11 @@ services:
         autoconfigure: true
         public: false
 
-    KimaiPlugin\UserActivityReportBundle\:
+    KimaiPlugin\ProjectContextReportBundle\:
         resource: '../../*'
         exclude: '../../{Resources}'
 
-    KimaiPlugin\UserActivityReportBundle\Controller\:
+    KimaiPlugin\ProjectContextReportBundle\Controller\:
         resource: '../../Controller'
         tags: ['controller.service_arguments']
 

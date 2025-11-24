@@ -1,6 +1,6 @@
 <?php
 
-namespace KimaiPlugin\UserActivityReportBundle\Controller;
+namespace KimaiPlugin\ProjectContextReportBundle\Controller;
 
 use App\Export\Spreadsheet\Writer\BinaryFileResponseWriter;
 use App\Export\Spreadsheet\Writer\XlsxWriter;
@@ -20,27 +20,27 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
-#[Route(path: '/reporting/customer/monthly_activities')]
-#[IsGranted('report:customer')]
+#[Route(path: '/reporting/project/context')]
+#[IsGranted('report:project')]
 final class CustomerMonthlyActivityController extends AbstractController
 {
-    #[Route(path: '/view', name: 'report_customer_monthly_activity', methods: ['GET', 'POST'])]
+    #[Route(path: '/view', name: 'report_project_context', methods: ['GET', 'POST'])]
     public function report(Request $request, TimesheetStatisticService $statisticService, UserRepository $userRepository, ActivityRepository $activityRepository): Response
     {
-        return $this->render('@UserActivityReport/monthly_activities.html.twig', $this->getData($request, $statisticService, $userRepository, $activityRepository));
+        return $this->render('@ProjectContext/monthly_activities.html.twig', $this->getData($request, $statisticService, $userRepository, $activityRepository));
     }
 
-    #[Route(path: '/export', name: 'report_customer_monthly_activity_export', methods: ['GET', 'POST'])]
+    #[Route(path: '/export', name: 'report_project_context_export', methods: ['GET', 'POST'])]
     public function export(Request $request, TimesheetStatisticService $statisticService, UserRepository $userRepository, ActivityRepository $activityRepository): Response
     {
         $data = $this->getData($request, $statisticService, $userRepository, $activityRepository);
 
-        $content = $this->renderView('@UserActivityReport/monthly_activities.html.twig', $data);
+        $content = $this->renderView('@ProjectContext/monthly_activities.html.twig', $data);
 
         $reader = new Html();
         $spreadsheet = $reader->loadFromString($content);
 
-        $writer = new BinaryFileResponseWriter(new XlsxWriter(), 'kimai-export-customer-activity-sum');
+        $writer = new BinaryFileResponseWriter(new XlsxWriter(), 'kimai-export-project-context');
 
         return $writer->getFileResponse($spreadsheet);
     }

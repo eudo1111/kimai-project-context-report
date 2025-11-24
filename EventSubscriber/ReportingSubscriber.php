@@ -1,6 +1,6 @@
 <?php
 
-namespace KimaiPlugin\UserActivityReportBundle\EventSubscriber;
+namespace KimaiPlugin\ProjectContextReportBundle\EventSubscriber;
 
 use App\Event\ReportingEvent;
 use App\Reporting\Report;
@@ -28,6 +28,6 @@ final class ReportingSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $event->addReport(new Report('report_customer_monthly_activity', 'report_customer_monthly_activity', 'Monthly User Activity', 'customer'));
+        $event->addReport(new Report('report_project_context', 'report_project_context', 'Project Context', 'project'));
     }
 }

@@ -1,13 +1,13 @@
-# UserActivityReportBundle for Kimai
+# ProjectContextReportBundle for Kimai
 
-UserActivityReportBundle is a Kimai plugin that adds a new report to
+ProjectContextReportBundle is a Kimai plugin that adds a new report to
 Kimai which let's you summarize the users activities. This especially helps
 you if you have global activities over a lot of different projects and if
 you want to have an sum of activities per user.
 
 ## Screenshot
 
-![Screenshot](./screenshot-user-activity.png?raw=true)
+![Screenshot](./screenshot-project-context.png?raw=true)
 
 ## Requirements
 
@@ -20,7 +20,7 @@ you want to have an sum of activities per user.
 
 ```bash
 cd var/plugins/
-git clone https://github.com/eudo1111/kimai-user-activity-report.git UserActivityReportBundle
+git clone https://github.com/eudo1111/kimai-project-context-report.git ProjectContextReportBundle
 ```
 
 2. **Clear the cache**
