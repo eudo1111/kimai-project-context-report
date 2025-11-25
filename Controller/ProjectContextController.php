@@ -2,169 +2,269 @@
 
 namespace KimaiPlugin\ProjectContextReportBundle\Controller;
 
-use App\Export\Spreadsheet\Writer\BinaryFileResponseWriter;
-use App\Export\Spreadsheet\Writer\XlsxWriter;
-use App\Reporting\MonthlyUserList\MonthlyUserList;
-use App\Reporting\MonthlyUserList\MonthlyUserListForm;
-use App\Repository\ActivityRepository;
-use App\Repository\Query\TimesheetStatisticQuery;
-use App\Repository\Query\UserQuery;
-use App\Repository\Query\VisibilityInterface;
-use App\Repository\UserRepository;
-use App\Timesheet\TimesheetStatisticService;
 use App\Controller\AbstractController;
-use PhpOffice\PhpSpreadsheet\Reader\Html;
+use App\Entity\Project;
+use App\Model\ActivityStatistic;
+use App\Project\ProjectStatisticService;
+use App\Repository\ActivityRepository;
+use App\Repository\TimesheetRepository;
+use App\Repository\UserRepository;
+use App\Form\Model\DateRange;
+use App\Utils\PageSetup;
+use DateTime;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Doctrine\DBAL\Types\Types;
+use KimaiPlugin\ProjectContextReportBundle\Reporting\ProjectContextForm;
+use KimaiPlugin\ProjectContextReportBundle\Reporting\ProjectContextQuery;
+use Symfony\Component\ExpressionLanguage\Expression;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-
 #[Route(path: '/reporting/project/context')]
 #[IsGranted('report:project')]
-final class CustomerMonthlyActivityController extends AbstractController
+#[IsGranted(new Expression("is_granted('details', 'project')"))]
+final class ProjectContextController extends AbstractController
 {
-    #[Route(path: '/view', name: 'report_project_context', methods: ['GET', 'POST'])]
-    public function report(Request $request, TimesheetStatisticService $statisticService, UserRepository $userRepository, ActivityRepository $activityRepository): Response
+    #[Route(path: '/view', name: 'report_project_context', methods: ['GET'])]
+    public function report(
+        Request $request,
+        ProjectStatisticService $service,
+        TimesheetRepository $timesheetRepository,
+        ActivityRepository $activityRepository,
+        UserRepository $userRepository
+    ): Response
     {
-        return $this->render('@ProjectContext/monthly_activities.html.twig', $this->getData($request, $statisticService, $userRepository, $activityRepository));
-    }
+        $dateFactory = $this->getDateTimeFactory();
+        $user = $this->getUser();
 
-    #[Route(path: '/export', name: 'report_project_context_export', methods: ['GET', 'POST'])]
-    public function export(Request $request, TimesheetStatisticService $statisticService, UserRepository $userRepository, ActivityRepository $activityRepository): Response
-    {
-        $data = $this->getData($request, $statisticService, $userRepository, $activityRepository);
-
-        $content = $this->renderView('@ProjectContext/monthly_activities.html.twig', $data);
-
-        $reader = new Html();
-        $spreadsheet = $reader->loadFromString($content);
-
-        $writer = new BinaryFileResponseWriter(new XlsxWriter(), 'kimai-export-project-context');
-
-        return $writer->getFileResponse($spreadsheet);
-    }
-
-    private function getData(Request $request, TimesheetStatisticService $statisticService, UserRepository $userRepository, ActivityRepository $activityRepository): array
-    {
-        $currentUser = $this->getUser();
-        $dateTimeFactory = $this->getDateTimeFactory();
-
-        $values = new MonthlyUserList();
-        $values->setDate($dateTimeFactory->getStartOfMonth());
-
-        $form = $this->createFormForGetRequest(MonthlyUserListForm::class, $values, [
-            'timezone' => $dateTimeFactory->getTimezone()->getName(),
-            'start_date' => $values->getDate(),
+        $defaultStart = $dateFactory->getStartOfMonth();
+        $query = new ProjectContextQuery($dateFactory->createDateTime(), $user);
+        $form = $this->createFormForGetRequest(ProjectContextForm::class, $query, [
+            'timezone' => $user->getTimezone()
         ]);
         $form->submit($request->query->all(), false);
 
-        $query = new UserQuery();
-        $query->setVisibility(VisibilityInterface::SHOW_BOTH);
-        $query->setSystemAccount(false);
-        $query->setCurrentUser($currentUser);
+        $project = $query->getProject();
+        $month = $query->getMonth() ?? $defaultStart;
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            if ($values->getTeam() !== null) {
-                $query->setSearchTeams([$values->getTeam()]);
-            }
-        } else {
-            $values->setDate($dateTimeFactory->getStartOfMonth());
+        $dateRange = new DateRange(true);
+        $dateRange->setBegin($month);
+        $monthEnd = $dateFactory->getEndOfMonth($dateRange->getBegin());
+        $dateRange->setEnd($monthEnd);
+
+        $monthStart = $dateRange->getBegin();
+        $monthEnd = $dateRange->getEnd();
+
+        $projectView = null;
+        $filteredActivities = [];
+        $userActivity = null;
+
+        if ($project !== null && $this->isGranted('details', $project)) {
+            $projectViews = $service->getProjectView($user, [$project], $query->getToday());
+            $projectView = $projectViews[0];
+            
+            // Filter activity statistics by the selected month
+            $filteredActivities = $this->getFilteredActivityStatistics(
+                $project,
+                $monthStart,
+                $monthEnd,
+                $timesheetRepository,
+                $activityRepository
+            );
+            
+            $userActivity = $this->buildUserActivityMatrix(
+                $project,
+                $monthStart,
+                $monthEnd,
+                $timesheetRepository,
+                $activityRepository,
+                $userRepository
+            );
         }
 
-        $allUsers = $userRepository->getUsersForQuery($query);
+        $page = new PageSetup('projects');
+        $page->setHelp('project.html');
 
-        $start = $values->getDate() ?? $dateTimeFactory->getStartOfMonth();
-        $start->modify('first day of 00:00:00');
-        $end = clone $start;
-        $end->modify('last day of 23:59:59');
-
-        $hasData = true;
-        $activityTotals = [];
-        $usersById = [];
-        foreach ($allUsers as $u) {
-            $usersById[(string) $u->getId()] = $u;
+        if ($project !== null) {
+            $page->setActionName('project');
+            $page->setActionView('project_context_report');
+            $page->setActionPayload(['project' => $project]);
         }
 
-        if (!empty($allUsers)) {
-            $grouped = $statisticService->getDailyStatisticsGrouped($start, $end, $allUsers);
+        $view_revenue = $project !== null && $this->isGranted('view_rate_other_timesheet');
 
-            // Build activity -> user -> totals (duration/rates) across the month
-            $selectedProjectId = null;
-            if ($values->getProject() !== null) {
-                $selectedProjectId = (string) $values->getProject()->getId();
+        return $this->render('@ProjectContextReport/project_context.html.twig', [
+            'page_setup' => $page,
+            'report_title' => 'report_project_context',
+            'project' => $project,
+            'project_view' => $projectView,
+            'activities' => $filteredActivities,
+            'form' => $form->createView(),
+            'now' => $this->getDateTimeFactory()->createDateTime(),
+            'view_revenue' => $view_revenue,
+            'month_start' => $monthStart,
+            'month_end' => $monthEnd,
+            'user_activity' => $userActivity,
+        ]);
+    }
+
+    /**
+     * @return ActivityStatistic[]
+     */
+    private function getFilteredActivityStatistics(
+        Project $project,
+        DateTimeInterface $begin,
+        DateTimeInterface $end,
+        TimesheetRepository $timesheetRepository,
+        ActivityRepository $activityRepository
+    ): array {
+        $qb = $timesheetRepository->createQueryBuilder('t');
+        $qb
+            ->select('IDENTITY(t.activity) as activity')
+            ->addSelect('COALESCE(SUM(t.duration), 0) as duration')
+            ->addSelect('COALESCE(SUM(t.rate), 0) as rate')
+            ->addSelect('COALESCE(SUM(t.internalRate), 0) as internalRate')
+            ->addSelect('COUNT(t.id) as count')
+            ->addSelect('t.billable as billable')
+            ->where($qb->expr()->eq('t.project', ':project'))
+            ->andWhere($qb->expr()->isNotNull('t.end'))
+            ->andWhere($qb->expr()->between('t.begin', ':begin', ':end'))
+            ->setParameter('project', $project)
+            ->setParameter('begin', DateTimeImmutable::createFromInterface($begin), Types::DATETIME_IMMUTABLE)
+            ->setParameter('end', DateTimeImmutable::createFromInterface($end), Types::DATETIME_IMMUTABLE)
+            ->addGroupBy('t.activity')
+            ->addGroupBy('t.billable')
+        ;
+
+        $results = $qb->getQuery()->getArrayResult();
+
+        /** @var array<int, ActivityStatistic> $activities */
+        $activities = [];
+        $activityIds = [];
+
+        foreach ($results as $row) {
+            $activityId = (int) $row['activity'];
+            $activityIds[$activityId] = $activityId;
+
+            if (!isset($activities[$activityId])) {
+                $activity = new ActivityStatistic();
+                $activities[$activityId] = $activity;
+            } else {
+                $activity = $activities[$activityId];
             }
-            foreach ($grouped as $uid => $projects) {
-                foreach ($projects as $projectData) {
-                    if ($selectedProjectId !== null && (string) $projectData['project'] !== $selectedProjectId) {
-                        continue;
-                    }
-                    foreach ($projectData['activities'] as $aid => $activityData) {
-                        if (!isset($activityTotals[$aid])) {
-                            $activityTotals[$aid] = ['activity' => $aid, 'perUser' => [], 'duration' => 0, 'rate' => 0.0, 'internalRate' => 0.0];
-                        }
-                        $days = $activityData['data'];
-                        $totalDuration = 0;
-                        $totalRate = 0.0;
-                        $totalInternal = 0.0;
-                        foreach ($days->getDays() as $day) {
-                            $totalDuration += $day->getTotalDuration();
-                            $totalRate += $day->getTotalRate();
-                            $totalInternal += $day->getTotalInternalRate();
-                        }
-                        if (!isset($activityTotals[$aid]['perUser'][$uid])) {
-                            $activityTotals[$aid]['perUser'][$uid] = ['duration' => 0, 'rate' => 0.0, 'internalRate' => 0.0];
-                        }
-                        $activityTotals[$aid]['perUser'][$uid]['duration'] += $totalDuration;
-                        $activityTotals[$aid]['perUser'][$uid]['rate'] += $totalRate;
-                        $activityTotals[$aid]['perUser'][$uid]['internalRate'] += $totalInternal;
-                        $activityTotals[$aid]['duration'] += $totalDuration;
-                        $activityTotals[$aid]['rate'] += $totalRate;
-                        $activityTotals[$aid]['internalRate'] += $totalInternal;
-                    }
+
+            $activity->setRate($activity->getRate() + (float) $row['rate']);
+            $activity->setDuration($activity->getDuration() + (int) $row['duration']);
+            $activity->setInternalRate($activity->getInternalRate() + (float) $row['internalRate']);
+            $activity->setCounter($activity->getCounter() + (int) $row['count']);
+
+            if ($row['billable']) {
+                $activity->setDurationBillable($activity->getDurationBillable() + (int) $row['duration']);
+                $activity->setRateBillable($activity->getRateBillable() + (float) $row['rate']);
+                $activity->setInternalRateBillable($activity->getInternalRateBillable() + (float) $row['internalRate']);
+            }
+        }
+
+        if (!empty($activityIds)) {
+            $activityEntities = $activityRepository->findBy(['id' => array_values($activityIds)]);
+            foreach ($activityEntities as $entity) {
+                if (isset($activities[$entity->getId()])) {
+                    $activities[$entity->getId()]->setActivity($entity);
                 }
             }
-        } else {
-            $hasData = false;
         }
 
-        // Map activity IDs to entities/names
-        $activityIds = array_keys($activityTotals);
+        return array_values($activities);
+    }
+
+    private function buildUserActivityMatrix(
+        Project $project,
+        DateTimeInterface $begin,
+        DateTimeInterface $end,
+        TimesheetRepository $timesheetRepository,
+        ActivityRepository $activityRepository,
+        UserRepository $userRepository
+    ): array {
+        $qb = $timesheetRepository->createQueryBuilder('t');
+        $qb
+            ->select('IDENTITY(t.user) as user_id')
+            ->addSelect('IDENTITY(t.activity) as activity_id')
+            ->addSelect('COALESCE(SUM(t.duration), 0) as duration')
+            ->addSelect('COALESCE(SUM(t.rate), 0) as rate')
+            ->where($qb->expr()->eq('t.project', ':project'))
+            ->andWhere($qb->expr()->isNotNull('t.end'))
+            ->andWhere($qb->expr()->between('t.begin', ':begin', ':end'))
+            ->setParameter('project', $project)
+            ->setParameter('begin', $begin)
+            ->setParameter('end', $end)
+            ->groupBy('t.user')
+            ->addGroupBy('t.activity')
+        ;
+
+        $results = $qb->getQuery()->getArrayResult();
+
+        $matrix = [];
+        $userTotals = [];
+        $activityTotals = [];
+        $totalDuration = 0;
+        $userIds = [];
+        $activityIds = [];
+
+        foreach ($results as $row) {
+            $duration = (int) $row['duration'];
+            if ($duration <= 0) {
+                continue;
+            }
+            $uid = (int) $row['user_id'];
+            $aid = (int) $row['activity_id'];
+
+            $matrix[$uid][$aid] = ($matrix[$uid][$aid] ?? 0) + $duration;
+            $userTotals[$uid] = ($userTotals[$uid] ?? 0) + $duration;
+            $activityTotals[$aid] = ($activityTotals[$aid] ?? 0) + $duration;
+            $totalDuration += $duration;
+
+            $userIds[$uid] = $uid;
+            $activityIds[$aid] = $aid;
+        }
+
+        $users = [];
+        if (!empty($userIds)) {
+            $userEntities = $userRepository->findBy(['id' => array_values($userIds)]);
+            foreach ($userEntities as $entity) {
+                $users[$entity->getId()] = [
+                    'id' => $entity->getId(),
+                    'name' => $entity->getDisplayName(),
+                    'color' => $entity->getColor(),
+                ];
+            }
+            uasort($users, static fn ($a, $b) => strcasecmp($a['name'], $b['name']));
+        }
+
         $activities = [];
         if (!empty($activityIds)) {
-            $activityEntities = $activityRepository->findBy(['id' => $activityIds]);
-            foreach ($activityEntities as $activity) {
-                $activities[(string) $activity->getId()] = $activity;
+            $activityEntities = $activityRepository->findBy(['id' => array_values($activityIds)]);
+            foreach ($activityEntities as $entity) {
+                $activities[$entity->getId()] = [
+                    'id' => $entity->getId(),
+                    'name' => $entity->getName(),
+                ];
             }
+            uasort($activities, static fn ($a, $b) => strcasecmp($a['name'], $b['name']));
         }
-
-        // Reduce users to only those that have any reported time for the selection
-        $userIdsWithData = [];
-        foreach ($activityTotals as $totals) {
-            foreach (array_keys($totals['perUser']) as $uid) {
-                $userIdsWithData[$uid] = true;
-            }
-        }
-        $usersWithData = [];
-        foreach ($userIdsWithData as $uid => $_) {
-            if (isset($usersById[$uid])) {
-                $usersWithData[] = $usersById[$uid];
-            }
-        }
-
 
         return [
-            'report_title' => 'report_customer_monthly_activity',
-            'export_route' => 'report_customer_monthly_activity_export',
-            'form' => $form->createView(),
-            'date' => $start,
-            'sumType' => $values->getSumType(),
-            'users' => $usersWithData,
-            'usersById' => $usersById,
-            'activities' => $activities,
+            'hasData' => $totalDuration > 0,
+            'users' => array_values($users),
+            'activities' => array_values($activities),
+            'matrix' => $matrix,
+            'userTotals' => $userTotals,
             'activityTotals' => $activityTotals,
-            'hasData' => $hasData,
-            'decimal' => $values->isDecimal(),
+            'totalDuration' => $totalDuration,
+            'begin' => $begin,
+            'end' => $end,
         ];
     }
 }

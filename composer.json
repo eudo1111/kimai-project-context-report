@@ -1,9 +1,9 @@
 {
   "name": "eudo1111/kimai-project-context-report",
-  "description": "User activity report for Kimai",
+  "description": "project context report for Kimai",
   "homepage": "https://dolux.ch/",
   "type": "kimai-plugin",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "keywords": [
       "kimai",
       "kimai-plugin"
@@ -19,7 +19,7 @@
   "extra": {
       "kimai": {
           "require": 21700,
-          "name": "User Activity Reports"
+          "name": "Project Context Reports"
       }
   },
   "autoload": {

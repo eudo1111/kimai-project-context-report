@@ -1,85 +1,229 @@
 {% extends 'reporting/layout.html.twig' %}
+{% import "macros/charts.html.twig" as charts %}
 {% import "macros/widgets.html.twig" as widgets %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    {{ encore_entry_link_tags('chart') }}
+{% endblock %}
+
+{% block head %}
+    {{ parent() }}
+    {{ encore_entry_script_tags('chart') }}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% set options = {'label': 'duration', 'title': 'name', 'legend': {'display': false}} %}
+    {% if view_revenue %}
+        {% set options = options|merge({'footer': 'rate'}) %}
+    {% endif %}
+    {{ charts.doughnut_javascript(options) }}
+    <script type="text/javascript">
+        document.addEventListener('kimai.initialized', function() {
+            {% if project is not null and activities is not empty %}
+            document.dispatchEvent(new Event('render.project{{ project.id }}Activity'));
+            {% endif %}
+        });
+    </script>
+{% endblock %}
+
 {% block report_form_layout %}
-    {{ form_widget(form.date) }}
-    {{ form_widget(form.team, {'label': false, 'placeholder': 'team'}) }}
     {{ form_widget(form.project, {'label': false, 'placeholder': 'project'}) }}
-    {{ form_widget(form.sumType) }}
-    {% from '@theme/components/buttons.html.twig' import submit_button %}
-    {{ submit_button('download', {'attr': {'formaction': path(export_route)}, 'icon': 'download', 'combined': false}, 'primary') }}
+    {{ form_widget(form.month, {'label': false}) }}
 {% endblock %}
 
 {% block report %}
-    {% embed '@theme/embeds/card.html.twig' with {box_id: 'project-context-sum-by-month', hasData: hasData, fullsize: hasData, users: users, activities: activities, activityTotals: activityTotals, sumType: sumType, decimal: decimal} only %}
-        {% block box_body_class %}table-responsive m-0{% endblock %}
-        {% block box_body %}
-            {% import "macros/widgets.html.twig" as widgets %}
-            {% if not hasData %}
-                {% from 'macros/widgets.html.twig' import nothing_found %}
-                {{ nothing_found() }}
-            {% else %}
-                {% set dataTypeTitle = sumType == 'rate' ? 'stats.amountTotal' : (sumType == 'internalRate' ? 'internalRate' : 'stats.durationTotal') %}
-                <table class="table table-hover dataTable">
-                    <thead>
-                        <tr>
-                            <th class="w-avatar"></th>
-                            <th>{{ 'user'|trans }}</th>
-                            <th class="text-center reportDataTypeTitle">{{ dataTypeTitle|trans }}</th>
-                            {% for aid, totals in activityTotals|sort((a,b) => (activities[a.activity].name|default('')|lower) <=> (activities[b.activity].name|default('')|lower)) %}
-                                <th class="text-center">
-                                    <a href="{{ path('activity_details', {'id': aid}) }}">{{ widgets.label_activity(activities[aid]|default({'name': aid})) }}</a>
-                                </th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                            {% set userTotalDuration = 0 %}
-                            {% set userTotalRate = 0 %}
-                            {% set userTotalInternal = 0 %}
-                            {# pre-calculate totals for this user before rendering the total column #}
-                            {% for aid, totals in activityTotals|sort((a,b) => (activities[a.activity].name|default('')|lower) <=> (activities[b.activity].name|default('')|lower)) %}
-                                {% set ukey = user.id ~ '' %}
-                                {% set cell = totals.perUser[ukey]|default(null) %}
-                                {% if cell %}
-                                    {% set userTotalDuration = userTotalDuration + (cell.duration|default(0)) %}
-                                    {% set userTotalRate = userTotalRate + (cell.rate|default(0)) %}
-                                    {% set userTotalInternal = userTotalInternal + (cell.internalRate|default(0)) %}
-                                {% endif %}
-                            {% endfor %}
-                            <tr class="user">
-                                <td class="w-avatar">{{ widgets.user_avatar(user) }}</td>
-                                <th class="text-nowrap">{{ user.displayName }}</th>
-                                <td class="text-nowrap text-center total">
-                                    {% if sumType == 'rate' %}
-                                        {{ userTotalRate|money }}
-                                    {% elseif sumType == 'internalRate' %}
-                                        {{ userTotalInternal|money }}
-                                    {% else %}
-                                        {{ userTotalDuration|duration(decimal) }}
-                                    {% endif %}
-                                </td>
-                                {% for aid, totals in activityTotals|sort((a,b) => (activities[a.activity].name|default('')|lower) <=> (activities[b.activity].name|default('')|lower)) %}
-                                    {% set ukey = user.id ~ '' %}
-                                    {% set cell = totals.perUser[ukey]|default(null) %}
-                                    <td class="text-center text-nowrap day-total">
-                                        {% if cell %}
-                                            {% if sumType == 'rate' %}
-                                                {{ cell.rate|money }}
-                                            {% elseif sumType == 'internalRate' %}
-                                                {{ cell.internalRate|money }}
-                                            {% else %}
-                                                {{ cell.duration|duration(decimal) }}
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                {% endfor %}
-                            </tr>
+    {% set hasData = project is not null and project_view is not null %}
+
+    {% if not hasData %}
+        {{ widgets.nothing_found() }}
+    {% else %}
+        {% set currency = project.customer.currency %}
+        {% set chartPrefix = 'project' ~ project.id %}
+        {% set totalDuration = 0 %}
+        {% for stat in activities %}
+            {% set totalDuration = totalDuration + stat.duration %}
+        {% endfor %}
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h3 class="card-title me-3">
+                    {{ widgets.label_project(project, {'inherit': false}) }}
+                </h3>
+                <div class="card-actions">
+                    {{ widgets.badge_counter(totalDuration|duration) }}
+                    {% if view_revenue %}
+                        {% set totalRate = 0.0 %}
+                        {% for stat in activities %}
+                            {% set totalRate = totalRate + stat.rate %}
                         {% endfor %}
-                    </tbody>
-                </table>
-            {% endif %}
-        {% endblock %}
-    {% endembed %}
+                        {{ widgets.badge_counter(totalRate|money(currency)) }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                {# Project Description #}
+                {% if project.comment is not empty %}
+                    <div class="comment p-3 mb-3">
+                        {{ project.comment|comment2html(true) }}
+                    </div>
+                {% endif %}
+
+                {# Activity Chart and Info #}
+                {% if activities is not empty %}
+                    {{ _self.activity_tab(activities, project_view.durationTotal, currency, chartPrefix, view_revenue) }}
+                {% else %}
+                    <div class="alert alert-info">
+                        {{ 'error.no_entries_found'|trans }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if user_activity is not null %}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title me-3">
+                        {{ 'user'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
+                    </h3>
+                    <div class="card-actions">
+                        {{ widgets.badge_counter(user_activity.totalDuration|duration) }}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if not user_activity.hasData %}
+                        <div class="alert alert-info mb-0">
+                            {{ 'error.no_entries_found'|trans }}
+                        </div>
+                    {% else %}
+                        {% set activityList = user_activity.activities %}
+                        <div class="table-responsive">
+                            <table class="table table-hover dataTable">
+                                <thead>
+                                    <tr>
+                                        <th>{{ 'user'|trans }}</th>
+                                        {% for activity in activityList %}
+                                            <th class="text-end">{{ activity.name }}</th>
+                                        {% endfor %}
+                                        <th class="text-end">{{ 'stats.durationTotal'|trans }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for userInfo in user_activity.users %}
+                                        {% set uid = userInfo.id %}
+                                        {% set userRow = user_activity.matrix[uid]|default({}) %}
+                                        {% set userTotal = user_activity.userTotals[uid]|default(0) %}
+                                        <tr>
+                                            <td class="text-nowrap">
+                                                {{ widgets.label_dot(userInfo.name, userInfo.color) }}
+                                            </td>
+                                            {% for activity in activityList %}
+                                                {% set value = userRow[activity.id]|default(0) %}
+                                                <td class="text-end text-nowrap">
+                                                    {% if value > 0 %}
+                                                        {{ value|duration }}
+                                                    {% else %}
+                                                        &ndash;
+                                                    {% endif %}
+                                                </td>
+                                            {% endfor %}
+                                            <td class="text-end text-nowrap">
+                                                {{ userTotal|duration }}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="summary">
+                                        <td>{{ 'stats.durationTotal'|trans }}</td>
+                                        {% for activity in activityList %}
+                                            {% set total = user_activity.activityTotals[activity.id]|default(0) %}
+                                            <td class="text-end text-nowrap">
+                                                {{ total|duration }}
+                                            </td>
+                                        {% endfor %}
+                                        <td class="text-end text-nowrap">
+                                            {{ user_activity.totalDuration|duration }}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
 {% endblock %}
+
+{#
+    activities       = array<ActivityStatistic>
+    totalDuration    = int
+    currency         = string
+    chartPrefix      = string
+    view_revenue     = boolean
+#}
+{% macro activity_tab(activities, totalDuration, currency, chartPrefix, view_revenue) %}
+    {% import "macros/widgets.html.twig" as widgets %}
+    {% import "macros/charts.html.twig" as charts %}
+    {% set dataset = [] %}
+    {% set labels = [] %}
+    <div class="row">
+        <div class="col-xs-12 col-sm-9 col-md-8 col-lg-6">
+            <table class="table table-hover dataTable">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th class="text-nowrap text-end">{{ 'duration'|trans }}</th>
+                        {% if view_revenue %}
+                        <th class="text-nowrap text-end">{{ 'billable'|trans }}</th>
+                        <th class="text-nowrap text-end">{{ 'stats.amountTotal'|trans }}</th>
+                        {% endif %}
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% set totalRate = 0.0 %}
+                {% set billable = 0 %}
+                {% for stat in activities|sort((a, b) => b.duration <=> a.duration) %}
+                    {% if stat.activity is not null %}
+                        {% set rate = stat.rate %}
+                        {% set totalRate = totalRate + rate %}
+                        {% set billable = billable + stat.rateBillable %}
+                        {% set dataset = dataset|merge([{'value': stat.duration, 'name': stat.name, 'color': stat.activity.color|colorize(stat.activity.name), 'duration': stat.duration|duration, 'rate': rate|money(currency)}]) %}
+                        {% set percentage = 0 %}
+                        {% if totalDuration > 0 and stat.duration > 0 %}
+                            {% set percentage = (100 / (totalDuration / stat.duration)) %}
+                        {% endif %}
+                        <tr>
+                            <td>{{ widgets.label_activity(stat.activity, {'inherit': false, 'random': true}) }}</td>
+                        <td class="text-nowrap text-end">{{ stat.duration|duration }}</td>
+                        {% if view_revenue %}
+                        <td class="text-nowrap text-end">{{ stat.rateBillable|money(currency) }}</td>
+                        <td class="text-nowrap text-end">{{ stat.rate|money(currency) }}</td>
+                        {% endif %}
+                            <td class="text-nowrap text-end">{{ percentage|number_format(1) }} %</td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                <tr class="summary">
+                    <td></td>
+                    <td class="text-nowrap text-end">{{ totalDuration|duration }}</td>
+                    {% if view_revenue %}
+                    <td class="text-nowrap text-end">{{ billable|money(currency) }}</td>
+                    <td class="text-nowrap text-end">{{ totalRate|money(currency) }}</td>
+                    {% endif %}
+                    <td></td>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="col-xs-12 col-sm-3 col-md-4 col-lg-6">
+            {% set chartOptions = {'height': (dataset|length > 12 ? '600px' : '300px'), 'renderEvent': 'render.' ~ chartPrefix ~ 'Activity'} %}
+            {{ charts.doughnut_chart(chartPrefix ~ 'Activity', labels, dataset, chartOptions) }}
+        </div>
+    </div>
+{% endmacro %}

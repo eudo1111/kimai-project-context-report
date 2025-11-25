@@ -28,6 +28,6 @@ final class ReportingSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $event->addReport(new Report('report_project_context', 'report_project_context', 'Project Context', 'project'));
+        $event->addReport(new Report('project_context', 'report_project_context', 'report_project_context', 'project'));
     }
 }

@@ -1,9 +1,18 @@
 # ProjectContextReportBundle for Kimai
 
 ProjectContextReportBundle is a Kimai plugin that adds a new report to
-Kimai which let's you summarize the users activities. This especially helps
-you if you have global activities over a lot of different projects and if
-you want to have an sum of activities per user.
+Kimai which gives you another overview over a project.
+
+* Project description
+* Doughnut of activities (as known in project-details -> activities)
+* List of users with the sum of worked activities
+
+Please also have a look on my other UserActivity Report:
+[User Activity Report](https://github.com/eudo1111/kimai-user-activity-report.git)
+
+## Permissions
+
+This report is available for all users with the standard **view_reporting** role.
 
 ## Screenshot
 
