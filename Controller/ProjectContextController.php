@@ -49,6 +49,13 @@ final class ProjectContextController extends AbstractController
 
         $project = $query->getProject();
         $month = $query->getMonth() ?? $defaultStart;
+        
+        // Normalize to first day of month to avoid issues when switching months
+        if ($month instanceof DateTimeInterface) {
+            $month = DateTime::createFromInterface($month);
+            $month->modify('first day of this month');
+            $month->setTime(0, 0, 0);
+        }
 
         $dateRange = new DateRange(true);
         $dateRange->setBegin($month);
