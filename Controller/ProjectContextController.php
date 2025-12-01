@@ -24,7 +24,6 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route(path: '/reporting/project/context')]
-#[IsGranted('report:project')]
 #[IsGranted(new Expression("is_granted('details', 'project')"))]
 final class ProjectContextController extends AbstractController
 {
@@ -68,11 +67,23 @@ final class ProjectContextController extends AbstractController
         $projectView = null;
         $filteredActivities = [];
         $userActivity = null;
+        $budgetStats = null;
+        $showMoneyBudget = false;
+        $showTimeBudget = false;
 
         if ($project !== null && $this->isGranted('details', $project)) {
             $projectViews = $service->getProjectView($user, [$project], $query->getToday());
             $projectView = $projectViews[0];
             
+            if ($project->hasBudget() || $project->hasTimeBudget()) {
+                $showMoneyBudget = $project->hasBudget() && $this->isGranted('budget', $project);
+                $showTimeBudget = $project->hasTimeBudget() && $this->isGranted('time', $project);
+
+                if ($showMoneyBudget || $showTimeBudget) {
+                    $budgetStats = $service->getBudgetStatisticModel($project, $query->getToday());
+                }
+            }
+
             // Filter activity statistics by the selected month
             $filteredActivities = $this->getFilteredActivityStatistics(
                 $project,
@@ -109,6 +120,9 @@ final class ProjectContextController extends AbstractController
             'project' => $project,
             'project_view' => $projectView,
             'activities' => $filteredActivities,
+            'budget_stats' => $budgetStats,
+            'show_money_budget' => $showMoneyBudget,
+            'show_time_budget' => $showTimeBudget,
             'form' => $form->createView(),
             'now' => $this->getDateTimeFactory()->createDateTime(),
             'view_revenue' => $view_revenue,

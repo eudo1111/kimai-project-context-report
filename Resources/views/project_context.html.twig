@@ -1,6 +1,7 @@
 {% extends 'reporting/layout.html.twig' %}
 {% import "macros/charts.html.twig" as charts %}
 {% import "macros/widgets.html.twig" as widgets %}
+{% import "macros/progressbar.html.twig" as progress %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -67,6 +68,40 @@
                 {% if project.comment is not empty %}
                     <div class="comment p-3 mb-3">
                         {{ project.comment|comment2html(true) }}
+                    </div>
+                {% endif %}
+
+                {# Project Budget Progressbar #}
+                {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
+                    <div class="mb-3">
+                        <table class="table table-borderless">
+                            {% if show_time_budget %}
+                                <tr>
+                                    <th class="w-min">
+                                        {{ 'timeBudget'|trans }}
+                                        {% if budget_stats.isMonthlyBudget() %}
+                                            ({{ 'budgetType_month'|trans }})
+                                        {% endif %}
+                                    </th>
+                                    <td>
+                                        {{ progress.progressbar_timebudget(budget_stats) }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                            {% if show_money_budget %}
+                                <tr>
+                                    <th class="w-min">
+                                        {{ 'budget'|trans }}
+                                        {% if budget_stats.isMonthlyBudget() %}
+                                            ({{ 'budgetType_month'|trans }})
+                                        {% endif %}
+                                    </th>
+                                    <td>
+                                        {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </table>
                     </div>
                 {% endif %}
 
