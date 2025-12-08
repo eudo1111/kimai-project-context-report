@@ -171,7 +171,7 @@
                             {{ 'error.no_entries_found'|trans }}
                         </div>
                     {% else %}
-                        {{ _self.activity_tab(activities, project_view.durationTotal, currency, chartPrefix, view_revenue) }}
+                        {{ _self.activity_tab(activities, totalDuration, currency, chartPrefix, view_revenue) }}
                     {% endif %}
                     {% endif %}
                 </div>
