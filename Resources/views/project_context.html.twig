@@ -63,133 +63,192 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="card-body">
-                {# Project Description #}
-                {% if project.comment is not empty %}
-                    <div class="comment p-3 mb-3">
-                        {{ project.comment|comment2html(true) }}
-                    </div>
-                {% endif %}
 
-                {# Project Budget Progressbar #}
-                {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
-                    <div class="mb-3">
-                        <table class="table table-borderless">
-                            {% if show_time_budget %}
-                                <tr>
-                                    <th class="w-min">
-                                        {{ 'timeBudget'|trans }}
-                                        {% if budget_stats.isMonthlyBudget() %}
-                                            ({{ 'budgetType_month'|trans }})
-                                        {% endif %}
-                                    </th>
-                                    <td>
-                                        {{ progress.progressbar_timebudget(budget_stats) }}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                            {% if show_money_budget %}
-                                <tr>
-                                    <th class="w-min">
-                                        {{ 'budget'|trans }}
-                                        {% if budget_stats.isMonthlyBudget() %}
-                                            ({{ 'budgetType_month'|trans }})
-                                        {% endif %}
-                                    </th>
-                                    <td>
-                                        {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </table>
-                    </div>
-                {% endif %}
+        <div class="tab-content mt-2 p-2 ps-3">
+            <div class="chart tab-pane active" id="details-chart">
+                <div class="row">
+                    <div class="col-xs-12 col-sm-6 col-md-7 col-lg-7 col-xl-6 col-xxl-5">
+                        <div class="datagrid" style="--tblr-datagrid-item-width: 12rem">
+                            <div class="datagrid-item" {{ widgets.customer_row_attr(project.customer) }}>
+                                <div class="datagrid-title">
+                                    {{ 'customer'|trans }}
+                                </div>
+                                <div class="datagrid-content">
+                                    {{ widgets.label_customer(project.customer) }}
+                                </div>
+                            </div>
+                            <div class="datagrid-item" {{ widgets.project_row_attr(project) }}>
+                                <div class="datagrid-title">
+                                    {{ 'project'|trans }}
+                                </div>
+                                <div class="datagrid-content">
+                                    {{ widgets.label_project(project) }}
+                                </div>
+                            </div>
 
-                {# Activity Chart and Info #}
-                {% if activities is not empty %}
-                    {{ _self.activity_tab(activities, project_view.durationTotal, currency, chartPrefix, view_revenue) }}
-                {% else %}
-                    <div class="alert alert-info">
-                        {{ 'error.no_entries_found'|trans }}
+                            {# Start & End #}
+                             {% if project.start is not null %}
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">
+                                    {{ 'start'|trans }}
+                                </div>
+                                <div class="datagrid-content">
+                                    {{ project.start|date_short }}
+                                </div>
+                            </div>
+                            {% endif %}
+                             {% if project.end is not null %}
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">
+                                    {{ 'end'|trans }}
+                                </div>
+                                <div class="datagrid-content">
+                                    {{ project.end|date_short }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {# Project Description #}
+                            {% if project.comment is not empty %}
+                            <div class="datagrid-item">
+                                <div class="datagrid-title">
+                                    {{ 'comment'|trans }}
+                                </div>
+                                <div class="datagrid-content">
+                                    {{ project.comment|comment2html(true) }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-xs-12 col-sm-6 col-md-5 col-lg-5 col-xl-6 col-xxl-7">
+                        {# Project Budget Progressbar #}
+                        {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
+                            <div class="mb-3">
+                                <table class="table table-borderless">
+                                    {% if show_time_budget %}
+                                        <tr>
+                                            <th class="w-min">
+                                                {{ 'timeBudget'|trans }}
+                                                {% if budget_stats.isMonthlyBudget() %}
+                                                    ({{ 'budgetType_month'|trans }})
+                                                {% endif %}
+                                            </th>
+                                            <td>
+                                                {{ progress.progressbar_timebudget(budget_stats) }}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                    {% if show_money_budget %}
+                                        <tr>
+                                            <th class="w-min">
+                                                {{ 'budget'|trans }}
+                                                {% if budget_stats.isMonthlyBudget() %}
+                                                    ({{ 'budgetType_month'|trans }})
+                                                {% endif %}
+                                            </th>
+                                            <td>
+                                                {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {# Activity Chart and Info #}
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title me-3">
+                        {{ 'activity'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if activities is empty %}
+                        <div class="alert alert-info">
+                            {{ 'error.no_entries_found'|trans }}
+                        </div>
+                    {% else %}
+                        {{ _self.activity_tab(activities, project_view.durationTotal, currency, chartPrefix, view_revenue) }}
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+                {% if user_activity is not null %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title me-3">
+                                {{ 'user'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            {% if not user_activity.hasData %}
+                                <div class="alert alert-info mb-0">
+                                    {{ 'error.no_entries_found'|trans }}
+                                </div>
+                            {% else %}
+                                {% set activityList = user_activity.activities %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover dataTable">
+                                        <thead>
+                                            <tr>
+                                                <th>{{ 'user'|trans }}</th>
+                                                {% for activity in activityList %}
+                                                    <th class="text-end">{{ activity.name }}</th>
+                                                {% endfor %}
+                                                <th class="text-end">{{ 'stats.durationTotal'|trans }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for userInfo in user_activity.users %}
+                                                {% set uid = userInfo.id %}
+                                                {% set userRow = user_activity.matrix[uid]|default({}) %}
+                                                {% set userTotal = user_activity.userTotals[uid]|default(0) %}
+                                                <tr>
+                                                    <td class="text-nowrap">
+                                                        {{ widgets.label_dot(userInfo.name, userInfo.color) }}
+                                                    </td>
+                                                    {% for activity in activityList %}
+                                                        {% set value = userRow[activity.id]|default(0) %}
+                                                        <td class="text-end text-nowrap">
+                                                            {% if value > 0 %}
+                                                                {{ value|duration }}
+                                                            {% else %}
+                                                                &ndash;
+                                                            {% endif %}
+                                                        </td>
+                                                    {% endfor %}
+                                                    <td class="text-end text-nowrap">
+                                                        {{ userTotal|duration }}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="summary">
+                                                <td>{{ 'stats.durationTotal'|trans }}</td>
+                                                {% for activity in activityList %}
+                                                    {% set total = user_activity.activityTotals[activity.id]|default(0) %}
+                                                    <td class="text-end text-nowrap">
+                                                        {{ total|duration }}
+                                                    </td>
+                                                {% endfor %}
+                                                <td class="text-end text-nowrap">
+                                                    {{ user_activity.totalDuration|duration }}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                 {% endif %}
             </div>
         </div>
-
-        {% if user_activity is not null %}
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title me-3">
-                        {{ 'user'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
-                    </h3>
-                    <div class="card-actions">
-                        {{ widgets.badge_counter(user_activity.totalDuration|duration) }}
-                    </div>
-                </div>
-                <div class="card-body">
-                    {% if not user_activity.hasData %}
-                        <div class="alert alert-info mb-0">
-                            {{ 'error.no_entries_found'|trans }}
-                        </div>
-                    {% else %}
-                        {% set activityList = user_activity.activities %}
-                        <div class="table-responsive">
-                            <table class="table table-hover dataTable">
-                                <thead>
-                                    <tr>
-                                        <th>{{ 'user'|trans }}</th>
-                                        {% for activity in activityList %}
-                                            <th class="text-end">{{ activity.name }}</th>
-                                        {% endfor %}
-                                        <th class="text-end">{{ 'stats.durationTotal'|trans }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for userInfo in user_activity.users %}
-                                        {% set uid = userInfo.id %}
-                                        {% set userRow = user_activity.matrix[uid]|default({}) %}
-                                        {% set userTotal = user_activity.userTotals[uid]|default(0) %}
-                                        <tr>
-                                            <td class="text-nowrap">
-                                                {{ widgets.label_dot(userInfo.name, userInfo.color) }}
-                                            </td>
-                                            {% for activity in activityList %}
-                                                {% set value = userRow[activity.id]|default(0) %}
-                                                <td class="text-end text-nowrap">
-                                                    {% if value > 0 %}
-                                                        {{ value|duration }}
-                                                    {% else %}
-                                                        &ndash;
-                                                    {% endif %}
-                                                </td>
-                                            {% endfor %}
-                                            <td class="text-end text-nowrap">
-                                                {{ userTotal|duration }}
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                                <tfoot>
-                                    <tr class="summary">
-                                        <td>{{ 'stats.durationTotal'|trans }}</td>
-                                        {% for activity in activityList %}
-                                            {% set total = user_activity.activityTotals[activity.id]|default(0) %}
-                                            <td class="text-end text-nowrap">
-                                                {{ total|duration }}
-                                            </td>
-                                        {% endfor %}
-                                        <td class="text-end text-nowrap">
-                                            {{ user_activity.totalDuration|duration }}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        {% endif %}
-    {% endif %}
+    </div>
 {% endblock %}
 
 {#
