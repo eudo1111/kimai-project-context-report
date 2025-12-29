@@ -30,7 +30,7 @@
 {% endblock %}
 
 {% block report_form_layout %}
-    {{ form_widget(form.project, {'label': false, 'placeholder': 'project'}) }}
+    {{ form_widget(form.project, {'label': false}) }}
     {{ form_widget(form.month, {'label': false}) }}
 {% endblock %}
 
@@ -196,7 +196,17 @@
                                             <tr>
                                                 <th>{{ 'user'|trans }}</th>
                                                 {% for activity in activityList %}
-                                                    <th class="text-end">{{ activity.name }}</th>
+                                                    <th class="text-end">
+                                                        {% if is_granted('view_other_timesheet') %}
+                                                            <a href="{{ widgets.search_filter('admin_timesheet', {'project': project.id, 'activity': activity.id, 'begin': month_start, 'end': month_end}) }}">
+                                                                {{ activity.name }}
+                                                            </a>
+                                                        {% else %}
+                                                            <a href="{{ widgets.search_filter('timesheet', {'project': project.id, 'activity': activity.id, 'begin': month_start, 'end': month_end}) }}">
+                                                                {{ activity.name }}
+                                                            </a>
+                                                        {% endif %}
+                                                    </th>
                                                 {% endfor %}
                                                 <th class="text-end">{{ 'stats.durationTotal'|trans }}</th>
                                             </tr>
@@ -208,7 +218,13 @@
                                                 {% set userTotal = user_activity.userTotals[uid]|default(0) %}
                                                 <tr>
                                                     <td class="text-nowrap">
-                                                        {{ widgets.label_dot(userInfo.name, userInfo.color) }}
+                                                        {% if is_granted('view_other_timesheet') %}
+                                                            <a href="{{ widgets.search_filter('admin_timesheet', {'project': project.id, 'user': userInfo.id, 'begin': month_start, 'end': month_end}) }}">
+                                                                {{ widgets.label_dot(userInfo.name, userInfo.color) }}
+                                                            </a>
+                                                        {% else %}
+                                                            {{ widgets.label_dot(userInfo.name, userInfo.color) }}
+                                                        {% endif %}
                                                     </td>
                                                     {% for activity in activityList %}
                                                         {% set value = userRow[activity.id]|default(0) %}
