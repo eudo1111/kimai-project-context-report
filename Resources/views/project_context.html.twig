@@ -23,7 +23,7 @@
     <script type="text/javascript">
         document.addEventListener('kimai.initialized', function() {
             {% if project is not null and activities is not empty %}
-            document.dispatchEvent(new Event('render.project{{ project.id }}Activity'));
+                document.dispatchEvent(new Event('render.project{{ project.id }}Activity'));
             {% endif %}
         });
     </script>
@@ -37,9 +37,7 @@
 {% block report %}
     {% set hasData = project is not null and project_view is not null %}
 
-    {% if not hasData %}
-        {{ widgets.nothing_found() }}
-    {% else %}
+    {% if hasData %}
         {% set currency = project.customer.currency %}
         {% set chartPrefix = 'project' ~ project.id %}
         {% set totalDuration = 0 %}
@@ -64,118 +62,166 @@
                 </div>
             </div>
 
-        <div class="tab-content mt-2 p-2 ps-3">
-            <div class="chart tab-pane active" id="details-chart">
-                <div class="row">
-                    <div class="col-xs-12 col-sm-6 col-md-7 col-lg-7 col-xl-6 col-xxl-5">
-                        <div class="datagrid" style="--tblr-datagrid-item-width: 12rem">
-                            <div class="datagrid-item" {{ widgets.customer_row_attr(project.customer) }}>
-                                <div class="datagrid-title">
-                                    {{ 'customer'|trans }}
+            <div class="tab-content mt-2 p-2 ps-3">
+                <div class="chart tab-pane active" id="details-chart">
+                    <div class="row">
+                        <div class="col-xs-12 col-sm-6 col-md-7 col-lg-7 col-xl-6 col-xxl-5">
+                            <div class="datagrid" style="--tblr-datagrid-item-width: 12rem">
+                                <div class="datagrid-item" {{ widgets.customer_row_attr(project.customer) }}>
+                                    <div class="datagrid-title">
+                                        {{ 'customer'|trans }}
+                                    </div>
+                                    <div class="datagrid-content">
+                                        {{ widgets.label_customer(project.customer) }}
+                                    </div>
                                 </div>
-                                <div class="datagrid-content">
-                                    {{ widgets.label_customer(project.customer) }}
+                                <div class="datagrid-item" {{ widgets.project_row_attr(project) }}>
+                                    <div class="datagrid-title">
+                                        {{ 'project'|trans }}
+                                    </div>
+                                    <div class="datagrid-content">
+                                        {{ widgets.label_project(project) }}
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="datagrid-item" {{ widgets.project_row_attr(project) }}>
-                                <div class="datagrid-title">
-                                    {{ 'project'|trans }}
-                                </div>
-                                <div class="datagrid-content">
-                                    {{ widgets.label_project(project) }}
-                                </div>
-                            </div>
 
-                            {# Start & End #}
-                             {% if project.start is not null %}
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">
-                                    {{ 'start'|trans }}
-                                </div>
-                                <div class="datagrid-content">
-                                    {{ project.start|date_short }}
-                                </div>
-                            </div>
-                            {% endif %}
-                             {% if project.end is not null %}
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">
-                                    {{ 'end'|trans }}
-                                </div>
-                                <div class="datagrid-content">
-                                    {{ project.end|date_short }}
-                                </div>
-                            </div>
-                            {% endif %}
+                                {# Start & End #}
+                                {% if project.start is not null %}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">
+                                            {{ 'start'|trans }}
+                                        </div>
+                                        <div class="datagrid-content">
+                                            {{ project.start|date_short }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                {% if project.end is not null %}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">
+                                            {{ 'end'|trans }}
+                                        </div>
+                                        <div class="datagrid-content">
+                                            {{ project.end|date_short }}
+                                        </div>
+                                    </div>
+                                {% endif %}
 
-                            {# Project Description #}
-                            {% if project.comment is not empty %}
-                            <div class="datagrid-item">
-                                <div class="datagrid-title">
-                                    {{ 'comment'|trans }}
-                                </div>
-                                <div class="datagrid-content">
-                                    {{ project.comment|comment2html(true) }}
-                                </div>
+                                {# Project Description #}
+                                {% if project.comment is not empty %}
+                                    <div class="datagrid-item">
+                                        <div class="datagrid-title">
+                                            {{ 'comment'|trans }}
+                                        </div>
+                                        <div class="datagrid-content">
+                                            {{ project.comment|comment2html(true) }}
+                                        </div>
+                                    </div>
+                                {% endif %}
                             </div>
+                        </div>
+                        <div class="col-xs-12 col-sm-6 col-md-5 col-lg-5 col-xl-6 col-xxl-7">
+                            {# Project Budget Progressbar #}
+                            {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
+                                <div class="mb-3">
+                                    <table class="table table-borderless">
+                                        {% if show_time_budget %}
+                                            <tr>
+                                                <th class="w-min">
+                                                    {{ 'timeBudget'|trans }}
+                                                    {% if budget_stats.isMonthlyBudget() %}
+                                                        ({{ 'budgetType_month'|trans }})
+                                                    {% endif %}
+                                                </th>
+                                                <td>
+                                                    {{ progress.progressbar_timebudget(budget_stats) }}
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        {% if show_money_budget %}
+                                            <tr>
+                                                <th class="w-min">
+                                                    {{ 'Kostendach der laufenden KoGu'|trans }}
+                                                    {% if budget_stats.isMonthlyBudget() %}
+                                                        ({{ 'budgetType_month'|trans }})
+                                                    {% endif %}
+                                                </th>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                        {# Monthly Budget Progressbar based on Project Duration #}
+                                        {% if show_money_budget and project.start is not null and project.end is not null and budget_stats is not null and budget_stats.hasBudget() %}
+                                            {% set projectStart = project.start %}
+                                            {% set projectEnd = project.end %}
+                                            {% set dateDiff = projectEnd.diff(projectStart) %}
+                                            {% set totalMonths = (dateDiff.y * 12) + dateDiff.m %}
+                                            {% if dateDiff.d > 0 %}
+                                                {% set totalMonths = totalMonths + 1 %}
+                                            {% endif %}
+                                            {% if totalMonths == 0 %}
+                                                {% set totalMonths = 1 %}
+                                            {% endif %}
+                                            {% if totalMonths > 0 %}
+                                                {% set totalBudget = budget_stats.getBudget() %}
+                                                {% set monthlyBudget = totalBudget / totalMonths %}
+                                                {% set currentMonthSpent = 0.0 %}
+                                                {% for stat in activities %}
+                                                    {% set currentMonthSpent = currentMonthSpent + stat.rateBillable %}
+                                                {% endfor %}
+                                                {% set monthlyBudgetOpen = monthlyBudget - currentMonthSpent %}
+                                                {% if monthlyBudgetOpen < 0 %}
+                                                    {% set monthlyBudgetOpen = 0 %}
+                                                {% endif %}
+                                                <tr>
+                                                    <th class="w-min">
+                                                        {{ 'budget'|trans }} ({{ 'budgetType_month'|trans }})
+                                                    </th>
+                                                </tr>
+                                                <tr>
+                                                    <td>
+                                                        {% set options = {
+                                                            'max': monthlyBudget,
+                                                            'current': currentMonthSpent,
+                                                            'open': monthlyBudgetOpen,
+                                                            'format': 'money',
+                                                            'currency': currency,
+                                                            'trans_percent_open': 'stats.percentUsedLeft_month',
+                                                            'trans_percent_spent': 'stats.percentUsed_month',
+                                                        } %}
+                                                        {{ progress.progressbar_full(options) }}
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endif %}
+                                    </table>
+                                </div>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="col-xs-12 col-sm-6 col-md-5 col-lg-5 col-xl-6 col-xxl-7">
-                        {# Project Budget Progressbar #}
-                        {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
-                            <div class="mb-3">
-                                <table class="table table-borderless">
-                                    {% if show_time_budget %}
-                                        <tr>
-                                            <th class="w-min">
-                                                {{ 'timeBudget'|trans }}
-                                                {% if budget_stats.isMonthlyBudget() %}
-                                                    ({{ 'budgetType_month'|trans }})
-                                                {% endif %}
-                                            </th>
-                                            <td>
-                                                {{ progress.progressbar_timebudget(budget_stats) }}
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                    {% if show_money_budget %}
-                                        <tr>
-                                            <th class="w-min">
-                                                {{ 'budget'|trans }}
-                                                {% if budget_stats.isMonthlyBudget() %}
-                                                    ({{ 'budgetType_month'|trans }})
-                                                {% endif %}
-                                            </th>
-                                            <td>
-                                                {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                </table>
+                </div>
+
+                {# Activity Chart and Info #}
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title me-3">
+                            {{ 'activity'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% if activities is empty %}
+                            <div class="alert alert-info">
+                                {{ 'error.no_entries_found'|trans }}
                             </div>
+                        {% else %}
+                            {{ _self.activity_tab(activities, totalDuration, currency, chartPrefix, view_revenue) }}
                         {% endif %}
                     </div>
                 </div>
-            </div>
-            {# Activity Chart and Info #}
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title me-3">
-                        {{ 'activity'|trans }} – {{ month_start|date_short }} – {{ month_end|date_short }}
-                    </h3>
-                </div>
-                <div class="card-body">
-                    {% if activities is empty %}
-                        <div class="alert alert-info">
-                            {{ 'error.no_entries_found'|trans }}
-                        </div>
-                    {% else %}
-                        {{ _self.activity_tab(activities, totalDuration, currency, chartPrefix, view_revenue) }}
-                    {% endif %}
-                    {% endif %}
-                </div>
-            </div>
+
+                {# User Activity Section #}
                 {% if user_activity is not null %}
                     <div class="card">
                         <div class="card-header">
@@ -263,8 +309,11 @@
                     </div>
                 {% endif %}
             </div>
+            </div>
         </div>
-    </div>
+    {% else %}
+        {{ widgets.nothing_found() }}
+    {% endif %}
 {% endblock %}
 
 {#
@@ -287,47 +336,47 @@
                         <th></th>
                         <th class="text-nowrap text-end">{{ 'duration'|trans }}</th>
                         {% if view_revenue %}
-                        <th class="text-nowrap text-end">{{ 'billable'|trans }}</th>
-                        <th class="text-nowrap text-end">{{ 'stats.amountTotal'|trans }}</th>
+                            <th class="text-nowrap text-end">{{ 'billable'|trans }}</th>
+                            <th class="text-nowrap text-end">{{ 'stats.amountTotal'|trans }}</th>
                         {% endif %}
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                {% set totalRate = 0.0 %}
-                {% set billable = 0 %}
-                {% for stat in activities|sort((a, b) => b.duration <=> a.duration) %}
-                    {% if stat.activity is not null %}
-                        {% set rate = stat.rate %}
-                        {% set totalRate = totalRate + rate %}
-                        {% set billable = billable + stat.rateBillable %}
-                        {% set dataset = dataset|merge([{'value': stat.duration, 'name': stat.name, 'color': stat.activity.color|colorize(stat.activity.name), 'duration': stat.duration|duration, 'rate': rate|money(currency)}]) %}
-                        {% set percentage = 0 %}
-                        {% if totalDuration > 0 and stat.duration > 0 %}
-                            {% set percentage = (100 / (totalDuration / stat.duration)) %}
+                    {% set totalRate = 0.0 %}
+                    {% set billable = 0 %}
+                    {% for stat in activities|sort((a, b) => b.duration <=> a.duration) %}
+                        {% if stat.activity is not null %}
+                            {% set rate = stat.rate %}
+                            {% set totalRate = totalRate + rate %}
+                            {% set billable = billable + stat.rateBillable %}
+                            {% set dataset = dataset|merge([{'value': stat.duration, 'name': stat.name, 'color': stat.activity.color|colorize(stat.activity.name), 'duration': stat.duration|duration, 'rate': rate|money(currency)}]) %}
+                            {% set percentage = 0 %}
+                            {% if totalDuration > 0 and stat.duration > 0 %}
+                                {% set percentage = (100 / (totalDuration / stat.duration)) %}
+                            {% endif %}
+                            <tr>
+                                <td>{{ widgets.label_activity(stat.activity, {'inherit': false, 'random': true}) }}</td>
+                                <td class="text-nowrap text-end">{{ stat.duration|duration }}</td>
+                                {% if view_revenue %}
+                                    <td class="text-nowrap text-end">{{ stat.rateBillable|money(currency) }}</td>
+                                    <td class="text-nowrap text-end">{{ stat.rate|money(currency) }}</td>
+                                {% endif %}
+                                <td class="text-nowrap text-end">{{ percentage|number_format(1) }} %</td>
+                            </tr>
                         {% endif %}
-                        <tr>
-                            <td>{{ widgets.label_activity(stat.activity, {'inherit': false, 'random': true}) }}</td>
-                        <td class="text-nowrap text-end">{{ stat.duration|duration }}</td>
-                        {% if view_revenue %}
-                        <td class="text-nowrap text-end">{{ stat.rateBillable|money(currency) }}</td>
-                        <td class="text-nowrap text-end">{{ stat.rate|money(currency) }}</td>
-                        {% endif %}
-                            <td class="text-nowrap text-end">{{ percentage|number_format(1) }} %</td>
-                        </tr>
-                    {% endif %}
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
                 <tfoot>
-                <tr class="summary">
-                    <td></td>
-                    <td class="text-nowrap text-end">{{ totalDuration|duration }}</td>
-                    {% if view_revenue %}
-                    <td class="text-nowrap text-end">{{ billable|money(currency) }}</td>
-                    <td class="text-nowrap text-end">{{ totalRate|money(currency) }}</td>
-                    {% endif %}
-                    <td></td>
-                </tr>
+                    <tr class="summary">
+                        <td></td>
+                        <td class="text-nowrap text-end">{{ totalDuration|duration }}</td>
+                        {% if view_revenue %}
+                            <td class="text-nowrap text-end">{{ billable|money(currency) }}</td>
+                            <td class="text-nowrap text-end">{{ totalRate|money(currency) }}</td>
+                        {% endif %}
+                        <td></td>
+                    </tr>
                 </tfoot>
             </table>
         </div>
