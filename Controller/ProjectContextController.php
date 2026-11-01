@@ -66,6 +66,7 @@ final class ProjectContextController extends AbstractController
 
         $projectView = null;
         $filteredActivities = [];
+        $activityShare = [];
         $userActivity = null;
         $budgetStats = null;
         $showMoneyBudget = false;
@@ -89,6 +90,15 @@ final class ProjectContextController extends AbstractController
                 $project,
                 $monthStart,
                 $monthEnd,
+                $timesheetRepository,
+                $activityRepository
+            );
+
+            // Activity share uses every logged entry on the project, not the selected month
+            $activityShare = $this->getFilteredActivityStatistics(
+                $project,
+                null,
+                null,
                 $timesheetRepository,
                 $activityRepository
             );
@@ -120,6 +130,7 @@ final class ProjectContextController extends AbstractController
             'project' => $project,
             'project_view' => $projectView,
             'activities' => $filteredActivities,
+            'activity_share' => $activityShare,
             'budget_stats' => $budgetStats,
             'show_money_budget' => $showMoneyBudget,
             'show_time_budget' => $showTimeBudget,
@@ -137,8 +148,8 @@ final class ProjectContextController extends AbstractController
      */
     private function getFilteredActivityStatistics(
         Project $project,
-        DateTimeInterface $begin,
-        DateTimeInterface $end,
+        ?DateTimeInterface $begin,
+        ?DateTimeInterface $end,
         TimesheetRepository $timesheetRepository,
         ActivityRepository $activityRepository
     ): array {
@@ -152,13 +163,18 @@ final class ProjectContextController extends AbstractController
             ->addSelect('t.billable as billable')
             ->where($qb->expr()->eq('t.project', ':project'))
             ->andWhere($qb->expr()->isNotNull('t.end'))
-            ->andWhere($qb->expr()->between('t.begin', ':begin', ':end'))
             ->setParameter('project', $project)
-            ->setParameter('begin', DateTimeImmutable::createFromInterface($begin), Types::DATETIME_IMMUTABLE)
-            ->setParameter('end', DateTimeImmutable::createFromInterface($end), Types::DATETIME_IMMUTABLE)
             ->addGroupBy('t.activity')
             ->addGroupBy('t.billable')
         ;
+
+        if ($begin !== null && $end !== null) {
+            $qb
+                ->andWhere($qb->expr()->between('t.begin', ':begin', ':end'))
+                ->setParameter('begin', DateTimeImmutable::createFromInterface($begin), Types::DATETIME_IMMUTABLE)
+                ->setParameter('end', DateTimeImmutable::createFromInterface($end), Types::DATETIME_IMMUTABLE)
+            ;
+        }
 
         $results = $qb->getQuery()->getArrayResult();
 
