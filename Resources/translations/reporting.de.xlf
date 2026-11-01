@@ -6,6 +6,10 @@
         <source>report_project_context</source>
         <target>Projekt-Kontext</target>
       </trans-unit>
+      <trans-unit id="report_project_context_activity_share" resname="report_project_context_activity_share">
+        <source>report_project_context_activity_share</source>
+        <target>Verhältnis</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -123,34 +123,56 @@
                             {# Project Budget Progressbar #}
                             {% if budget_stats is not null and (show_time_budget or show_money_budget) %}
                                 <div class="mb-3">
-                                    <table class="table table-borderless">
-                                        {% if show_time_budget %}
-                                            <tr>
-                                                <th class="w-min">
-                                                    {{ 'timeBudget'|trans }}
-                                                    {% if budget_stats.isMonthlyBudget() %}
-                                                        ({{ 'budgetType_month'|trans }})
-                                                    {% endif %}
-                                                </th>
-                                                <td>
-                                                    {{ progress.progressbar_timebudget(budget_stats) }}
-                                                </td>
-                                            </tr>
-                                        {% endif %}
                                         {% if show_money_budget %}
-                                            <tr>
-                                                <th class="w-min">
-                                                    {{ 'Kostendach der laufenden KoGu'|trans }}
-                                                    {% if budget_stats.isMonthlyBudget() %}
-                                                        ({{ 'budgetType_month'|trans }})
-                                                    {% endif %}
-                                                </th>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
-                                                </td>
-                                            </tr>
+                                            <div class="fw-bold mb-1">
+                                                {{ 'Kostendach der laufenden KoGu'|trans }}
+                                                {% if budget_stats.isMonthlyBudget() %}
+                                                    ({{ 'budgetType_month'|trans }})
+                                                {% endif %}
+                                            </div>
+                                            <div class="mb-3">
+                                                {{ progress.progressbar_budget(budget_stats, project.customer.currency) }}
+                                            </div>
+                                        {% endif %}
+                                        {% if activity_share is not empty %}
+                                            {% set shareStats = activity_share|filter(stat => stat.activity is not null and stat.duration > 0)|sort((a, b) => b.duration <=> a.duration) %}
+                                            {% set shareTotal = 0 %}
+                                            {% for stat in shareStats %}
+                                                {% set shareTotal = shareTotal + stat.duration %}
+                                            {% endfor %}
+                                            {% if shareTotal > 0 %}
+                                                <div class="fw-bold mb-1">
+                                                    {{ 'report_project_context_activity_share'|trans({}, 'reporting') }}
+                                                </div>
+                                                <div class="mb-3">
+                                                        <div class="progress-group">
+                                                            <div class="progress-title">
+                                                                <span class="progress-text">
+                                                                    {{ shareTotal|duration }}
+                                                                </span>
+                                                                <span class="progress-number text-end">
+                                                                    <strong>100%</strong>
+                                                                </span>
+                                                            </div>
+                                                            <div class="progress">
+                                                                {% for stat in shareStats %}
+                                                                    {% set percentage = (100 / (shareTotal / stat.duration)) %}
+                                                                    {% set color = stat.activity.color|colorize(stat.activity.name) %}
+                                                                    <div class="progress-bar" role="progressbar" title="{{ stat.name }}: {{ stat.duration|duration }} ({{ percentage|number_format(1) }}%)" aria-valuenow="{{ percentage|number_format(1, '.', '') }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ percentage|number_format(2, '.', '') }}%; background-color: {{ color }}"></div>
+                                                                {% endfor %}
+                                                            </div>
+                                                            <small>
+                                                                {% for stat in shareStats %}
+                                                                    {% set percentage = (100 / (shareTotal / stat.duration)) %}
+                                                                    {% set color = stat.activity.color|colorize(stat.activity.name) %}
+                                                                    <span class="me-2 text-nowrap">
+                                                                        <span class="badge me-1" style="background-color: {{ color }}">&nbsp;</span>{{ stat.name }} {{ percentage|number_format(1) }}%
+                                                                    </span>
+                                                                {% endfor %}
+                                                            </small>
+                                                        </div>
+                                                </div>
+                                            {% endif %}
                                         {% endif %}
                                         {# Monthly Budget Progressbar based on Project Duration #}
                                         {% if show_money_budget and project.start is not null and project.end is not null and budget_stats is not null and budget_stats.hasBudget() %}
@@ -175,28 +197,34 @@
                                                 {% if monthlyBudgetOpen < 0 %}
                                                     {% set monthlyBudgetOpen = 0 %}
                                                 {% endif %}
-                                                <tr>
-                                                    <th class="w-min">
-                                                        {{ 'budget'|trans }} ({{ 'budgetType_month'|trans }})
-                                                    </th>
-                                                </tr>
-                                                <tr>
-                                                    <td>
-                                                        {% set options = {
-                                                            'max': monthlyBudget,
-                                                            'current': currentMonthSpent,
-                                                            'open': monthlyBudgetOpen,
-                                                            'format': 'money',
-                                                            'currency': currency,
-                                                            'trans_percent_open': 'stats.percentUsedLeft_month',
-                                                            'trans_percent_spent': 'stats.percentUsed_month',
-                                                        } %}
-                                                        {{ progress.progressbar_full(options) }}
-                                                    </td>
-                                                </tr>
+                                                <div class="fw-bold mb-1">
+                                                    {{ 'budget'|trans }} ({{ 'budgetType_month'|trans }})
+                                                </div>
+                                                <div class="mb-3">
+                                                    {% set options = {
+                                                        'max': monthlyBudget,
+                                                        'current': currentMonthSpent,
+                                                        'open': monthlyBudgetOpen,
+                                                        'format': 'money',
+                                                        'currency': currency,
+                                                        'trans_percent_open': 'stats.percentUsedLeft_month',
+                                                        'trans_percent_spent': 'stats.percentUsed_month',
+                                                    } %}
+                                                    {{ progress.progressbar_full(options) }}
+                                                </div>
                                             {% endif %}
                                         {% endif %}
-                                    </table>
+                                        {% if show_time_budget %}
+                                            <div class="fw-bold mb-1">
+                                                {{ 'timeBudget'|trans }}
+                                                {% if budget_stats.isMonthlyBudget() %}
+                                                    ({{ 'budgetType_month'|trans }})
+                                                {% endif %}
+                                            </div>
+                                            <div class="mb-3">
+                                                {{ progress.progressbar_timebudget(budget_stats) }}
+                                            </div>
+                                        {% endif %}
                                 </div>
                             {% endif %}
                         </div>
